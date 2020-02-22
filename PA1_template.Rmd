@@ -1,25 +1,105 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Activity monitoring data"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## download and unzip data
 
+```{r}
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(fileUrl, destfile = "./repdata%2Fdata%2Factivity.zip")
+unzip("./repdata%2Fdata%2Factivity.zip")
+activity <- read.csv("./activity.csv")
+```
 
+## Total number of steps taken each day
 
-## What is mean total number of steps taken per day?
+#### Calculate the total number of steps taken per day and make a histogram.
+```{r}
+step_d_t <- with(activity, tapply(steps, date, sum, na.rm=TRUE))
+hist(step_d_t,xlab="steps",main="Total number of steps taken each day")
 
+```
+ 
+#### Calculate and the mean and median of the total number of steps taken per day.
+```{r}
+mean <- mean(step_d_t)
+median <- median(step_d_t)
+```
+Mean of the total number of steps taken per day is `r mean`.
+Median of the total number of steps taken per day is `r median`.
 
+## The average daily activity pattern
 
-## What is the average daily activity pattern?
+#### Make a time series plot of the average number of steps taken across the 5-minute intervals.
+```{r}
+step_i_m <- with(activity, tapply(steps, interval, mean, na.rm=TRUE))
+plot(names(step_i_m),step_i_m, type= "l",xlab = "interval", ylab = "average steps")
+```
 
-
+#### Calculate the 5-minute interval on average across contains the maximum number of steps.
+```{r}
+max <- names(which.max(step_i_m))
+```
+The 5-minute interval that on average contains the maximum number of steps is `r max`.
 
 ## Imputing missing values
 
+#### Calculate the total number of missing values in the dataset.
+```{r}
+na <- sum(!complete.cases(activity))
+```
+There are `r na` missing values in the dataset.
+ 
+#### Fill in all of the missing values in the dataset with the mean for that 5-minute interval.
+```{r}
+activity$step_m <- step_i_m
+for (i in 1:17568){
+    if (is.na(activity[i,1])==TRUE){
+        activity[i,1] <- activity[i,4]
+    }
+}
+activity <- activity[,1:3]
+head(activity)
+```
 
+#### Make a histogram of the total number of steps taken each day after missing values are imputed.
+```{r}
+step_d_t2 <- with(activity, tapply(steps, date, sum))
+hist(step_d_t2,xlab="steps",main="Total number of steps taken each day")
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+#### Calculate the mean and median total number of steps taken per day after missing values are imputed.
+```{r}
+mean2 <- mean(step_d_t2)
+median2 <- median(step_d_t2)
+```
+Mean of the total number of steps taken per day is `r mean2`.
+Median of the total number of steps taken per day is `r median2`.
+
+## Panel plot of weekdays and weekends
+
+#### Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r}
+Sys.setlocale("LC_ALL","English")
+activity$date <- as.Date(activity$date, format="%Y-%m-%d")
+activity$weekdays <- as.factor(weekdays(activity$date))
+library("dplyr")
+activity <- activity %>% mutate(w = ifelse(weekdays == "Saturday"|weekdays == "Sunday", "weekend", "weekday"))
+head(activity)
+```
+
+#### Make a panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends.
+```{r}
+activity1 <- filter(activity, w == "weekday")
+activity2 <- filter(activity,w == "weekend")
+step_i_m1 <- with(activity1, tapply(steps, interval, mean))
+step_i_m2 <- with(activity2, tapply(steps, interval, mean)) 
+par(mfrow = c(2,1),mar = c(4, 5, 3, 5))
+plot(names(step_i_m1),step_i_m1, type= "l",xlab = "interval", ylab = "average steps", main = "weekdays")
+plot(names(step_i_m2),step_i_m2, type= "l",xlab = "interval", ylab = "average steps", main = "weekends")
+```
